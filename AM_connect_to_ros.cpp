@@ -38,8 +38,8 @@ double const r_kP = 0.33, r_kI=3.53,r_kD = 0.004;
 /**--------------------------car parameter-----------------------------------------------**/
 const double pi=3.1415;
 const double sampletime = 0.02, inv_sampletime = 1/sampletime;
-const double wheels_distance = 200, wheels_radius = 32.5, wheels_diameter=65,wheels_encoder = 200;// mm
-const double wheel_ticLength = wheels_diameter*pi/wheels_encoder;//0.23mm
+const double wheels_distance = 207, wheels_radius = 31, wheels_diameter=62,wheels_encoder = 408;// 12 pulse/rev * 34 in ratio mm
+const double wheel_ticLength = wheels_diameter*pi/wheels_encoder;
 const bool l_motor=1,r_motor=0;
 /*--------------------------position calculation----------------------------*/
 double p_org[]={0.0,0.0,0.0}, p_now[]= {0.0,0.0,0.0}; //{x,y,phi}
