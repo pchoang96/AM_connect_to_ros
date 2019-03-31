@@ -3,7 +3,6 @@
 #include <std_msgs/Empty.h>
 #include <geometry_msgs/Twist.h>
 #include <geometry_msgs/Pose2D.h> //x,y,theta float 64
-#include <geometry_msgs/Point.h> //x,y,z loat 64
 
 
 #define clkw        0
@@ -39,7 +38,7 @@ double const r_kP = 0.33, r_kI=3.53,r_kD = 0.004;
 /**--------------------------car parameter-----------------------------------------------**/
 const double pi=3.1415;
 const double sampletime = 0.02, inv_sampletime = 1/sampletime;
-const double wheels_distance = 200, wheels_radius = 31, wheels_diameter=62,wheels_encoder = 200;// mm
+const double wheels_distance = 200, wheels_radius = 32.5, wheels_diameter=65,wheels_encoder = 200;// mm
 const double wheel_ticLength = wheels_diameter*pi/wheels_encoder;//0.23mm
 const bool l_motor=1,r_motor=0;
 /*--------------------------position calculation----------------------------*/
@@ -53,7 +52,7 @@ ros::NodeHandle  nh;
 /*----------------------Subscriber define------------------------------------------------*/
 void messageCb(const geometry_msgs::Twist& vel)
 {
-  lin_vel=vel.linear.x*100;
+  lin_vel=vel.linear.x*1000;
   ang_vel=vel.angular.z*180/pi;
 }
 
@@ -61,28 +60,16 @@ ros::Subscriber<geometry_msgs::Twist> sub("/turtle1/cmd_vel", messageCb );
 /*----------------------Publisher define------------------------------------------------*/
 geometry_msgs::Pose2D postef;
 ros::Publisher pos_temp("position", &postef);
-
-geometry_msgs::Point lin_ang;
-ros::Publisher test_temp("velocity", &lin_ang);
 /*
   rosrun rosserial_python serial_node.py /dev/ttyACM0 (aka /dev/tty<-arduino port->)
  * using rostopic to manage and checking topic
- * set baud rate for connection by these lines:
- *  nh.getHardware()->setBaud(250000);
- * rosrun rosserial_python serial_node.py _port:=/dev/ttyUSB0 _baud:=1000000
-
- * .
 */
 
 void setup()
 {
-  nh.getHardware()->setBaud(250000);
- // rosrun rosserial_python serial_node.py _port:=/dev/ttyUSB0 _baud:=1000000
-
   nh.initNode();
   nh.subscribe(sub);
   nh.advertise(pos_temp);
-  nh.advertise(test_temp);
   pinMode(M1_l,OUTPUT);
   pinMode(M2_l,OUTPUT);
   pinMode(encodPinA1, INPUT_PULLUP);                  // encoder input pin
@@ -107,16 +94,9 @@ void loop()
       postef.x     = p_now[0];
       postef.y     = p_now[1];
       postef.theta = p_now[2];
-      pos_temp.publish(&postef);
-      
-      lin_ang.x = r_v;
-      lin_ang.y = l_v;
-      test_temp.publish(&lin_ang);
-       
       setting_millis=millis() + pos_sampleTime;
     }
   nh.spinOnce();
-  delay(pos_sampleTime/2);
 }
 /*-------------------encoder interrupt 1 ---------------------------------------*/
 void encoder_1()
@@ -181,8 +161,8 @@ void calculate_position(double xt,double yt, double pht)
 /*----------Calculate from angle and linear to motion of 2 wheels--------------------------------------*/
 void motion(double lin, double phi )
 {
-  r_v = (2*lin - phi*wheels_distance)/(2.0*wheels_radius); //speed of right wheels  
-  l_v = (2*lin + phi*wheels_distance)/(2.0*wheels_radius);  //speed of left wheels
+  r_v = (2.0*lin - phi*wheels_distance)/(2.0); //r_v: speed (m/s) of right wheels   
+  l_v = (2.0*lin + phi*wheels_distance)/(2.0);  //l_v: speed (m/s)of left wheels
   //to l_vt and r_vt
   l_vt = l_v*(wheels_encoder/(pi*wheels_diameter))*sampletime;
   r_vt = r_v*(wheels_encoder/(pi*wheels_diameter))*sampletime;
@@ -237,4 +217,4 @@ ISR(TIMER1_OVF_vect)
   r_p=0;
   TCNT1 = 60535;
 }
-/*-----------------------------------------------------------------*/
+/**--------------------------------------------------------------**/
