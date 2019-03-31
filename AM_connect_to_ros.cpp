@@ -3,6 +3,7 @@
 #include <std_msgs/Empty.h>
 #include <geometry_msgs/Twist.h>
 #include <geometry_msgs/Pose2D.h> //x,y,theta float 64
+#include <geometry_msgs/Point.h> //x,y,z loat 64
 
 
 #define clkw        0
@@ -37,8 +38,8 @@ volatile double  r_error=0.0,r_pre_error=0.0,r_integral=0.0,r_derivative=0.0,r_P
 double const r_kP = 0.33, r_kI=3.53,r_kD = 0.004;
 /**--------------------------car parameter-----------------------------------------------**/
 const double pi=3.1415;
-const double sampletime = 0.02, inv_sampletime = 1/sampletime;
-const double wheels_distance = 207, wheels_radius = 31, wheels_diameter=62,wheels_encoder = 408;// 12 pulse/rev * 34 in ratio mm
+const double sampletime = 0.02, inv_sampletime = 1/sampletime,timer_set=65535-sampletime*250000;
+const double wheels_distance = 207, wheels_radius = 31, wheels_diameter=62,wheels_encoder = 408;// mm
 const double wheel_ticLength = wheels_diameter*pi/wheels_encoder;
 const bool l_motor=1,r_motor=0;
 /*--------------------------position calculation----------------------------*/
@@ -60,16 +61,27 @@ ros::Subscriber<geometry_msgs::Twist> sub("/turtle1/cmd_vel", messageCb );
 /*----------------------Publisher define------------------------------------------------*/
 geometry_msgs::Pose2D postef;
 ros::Publisher pos_temp("position", &postef);
+
+geometry_msgs::Point lin_ang;
+ros::Publisher test_temp("velocity", &lin_ang);
 /*
   rosrun rosserial_python serial_node.py /dev/ttyACM0 (aka /dev/tty<-arduino port->)
  * using rostopic to manage and checking topic
+ * set baud rate for connection by these lines:
+ *  nh.getHardware()->setBaud(250000);
+ * rosrun rosserial_python serial_node.py _port:=/dev/ttyUSB0 _baud:=1000000
+ * .
 */
 
 void setup()
 {
+  nh.getHardware()->setBaud(250000);
+ // rosrun rosserial_python serial_node.py _port:=/dev/ttyUSB0 _baud:=1000000
+
   nh.initNode();
   nh.subscribe(sub);
   nh.advertise(pos_temp);
+  nh.advertise(test_temp);
   pinMode(M1_l,OUTPUT);
   pinMode(M2_l,OUTPUT);
   pinMode(encodPinA1, INPUT_PULLUP);                  // encoder input pin
@@ -81,7 +93,7 @@ void setup()
   TCCR1B = 0;
   TIMSK1 = 0;
   TCCR1B |= (1 << CS11) | (1 << CS10);    // prescale = 64 4us per pulse
-  TCNT1 = 60535; //(12500*4)=50ms
+  TCNT1 = timer_set; //(12500*4)=50ms
   TIMSK1 |= (1 << TOIE1);                  // Overflow interrupt enable 
   sei();                                  // enable all interrupt
 }
@@ -94,9 +106,16 @@ void loop()
       postef.x     = p_now[0];
       postef.y     = p_now[1];
       postef.theta = p_now[2];
+      pos_temp.publish(&postef);
+      
+      lin_ang.x = r_v;
+      lin_ang.y = l_v;
+      test_temp.publish(&lin_ang);
+       
       setting_millis=millis() + pos_sampleTime;
     }
   nh.spinOnce();
+  delay(pos_sampleTime/2);
 }
 /*-------------------encoder interrupt 1 ---------------------------------------*/
 void encoder_1()
@@ -161,8 +180,8 @@ void calculate_position(double xt,double yt, double pht)
 /*----------Calculate from angle and linear to motion of 2 wheels--------------------------------------*/
 void motion(double lin, double phi )
 {
-  r_v = (2.0*lin - phi*wheels_distance)/(2.0); //r_v: speed (m/s) of right wheels   
-  l_v = (2.0*lin + phi*wheels_distance)/(2.0);  //l_v: speed (m/s)of left wheels
+  r_v = (2*lin - phi*wheels_distance)/(2.0); //speed of right wheels  
+  l_v = (2*lin + phi*wheels_distance)/(2.0);  //speed of left wheels
   //to l_vt and r_vt
   l_vt = l_v*(wheels_encoder/(pi*wheels_diameter))*sampletime;
   r_vt = r_v*(wheels_encoder/(pi*wheels_diameter))*sampletime;
@@ -174,10 +193,10 @@ void motion(double lin, double phi )
   
   l_set=abs(l_vt);
   r_set=abs(r_vt);
-  if (l_set>30) l_set=30;
+ /* if (l_set>30) l_set=30;
   else if (l_set<5 && l_set>0.5) l_set=5 ;
   if (r_set>30) r_set=30;
-  else if (r_set<5 && r_set>0.5) r_set =5;
+  else if (r_set<5 && r_set>0.5) r_set =5;*/
 }
 /**---------------------------------------------------------------------------------------------------------------**/
 //PID_cal(l_error,l_pre_error,l_integral,l_derivative,l_Ppart,l_Ipart,l_Dpart,l_kP,l_kI,l_kD);
@@ -215,6 +234,6 @@ ISR(TIMER1_OVF_vect)
   pwmOut(l_out,r_out,l_dir,r_dir);
   l_p=0;
   r_p=0;
-  TCNT1 = 60535;
+  TCNT1 =timer_set;
 }
-/**--------------------------------------------------------------**/
+/*-----------------------------------------------------------------*/
