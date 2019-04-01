@@ -39,7 +39,7 @@ double const r_kP = 0.95, r_kI=25.23,r_kD = 0.008;
 /**--------------------------car parameter-----------------------------------------------**/
 const double pi=3.1415;
 const double sampletime = 0.02, inv_sampletime = 1/sampletime,timer_set=65535-sampletime*250000;
-const double wheels_distance = 207, wheels_radius = 31, wheels_diameter=62,wheels_encoder = 408;// mm
+const double wheels_distance = 207, wheels_radius = 31, wheels_diameter=62,wheels_encoder = 430;// mm
 const double wheel_ticLength = wheels_diameter*pi/wheels_encoder;
 const bool l_motor=1,r_motor=0;
 /*--------------------------position calculation----------------------------*/
@@ -102,7 +102,6 @@ void loop()
 {
   if (millis()>=setting_millis)
     {
-      calculate_position(p_now[0],p_now[1],p_now[2]);
       postef.x     = p_now[0];
       postef.y     = p_now[1];
       postef.theta = p_now[2];
@@ -223,6 +222,7 @@ double PID_cal(double error,double pre_error,double _integral,double _derivative
 ISR(TIMER1_OVF_vect) 
 {
   motion(lin_vel,ang_vel);  
+  calculate_position(p_now[0],p_now[1],p_now[2]);
   l_error= l_set-abs(l_p);
   r_error= r_set-abs(r_p);
   if (l_error>=-1 && l_error<=1) l_error=0;
