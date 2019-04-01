@@ -33,9 +33,9 @@ double r_v,r_vt; // pwm: pwm output. lv: mm/sec. lvt: tic/delta_t l:lert, r: rig
 bool l_dir=clkw, r_dir=clkw;
 /**-----------------------pid velocity calculation-------------------------------------------**/
 volatile double  l_error=0.0,l_pre_error=0.0,l_integral=0.0,l_derivative=0.0,l_Ppart=0.0,l_Ipart=0.0,l_Dpart=0.0,l_out,l_set,l_ms,l_pre_out=0;
-double const l_kP = 0.33, l_kI=3.53 ,l_kD = 0.004;
+double const l_kP = 0.72, l_kI=25.205 ,l_kD = 0.005;
 volatile double  r_error=0.0,r_pre_error=0.0,r_integral=0.0,r_derivative=0.0,r_Ppart=0.0,r_Ipart=0.0,r_Dpart=0.0,r_out,r_set,r_ms,r_pre_out=0;
-double const r_kP = 0.33, r_kI=3.53,r_kD = 0.004;
+double const r_kP = 0.95, r_kI=25.23,r_kD = 0.008;
 /**--------------------------car parameter-----------------------------------------------**/
 const double pi=3.1415;
 const double sampletime = 0.02, inv_sampletime = 1/sampletime,timer_set=65535-sampletime*250000;
