@@ -56,7 +56,6 @@ void messageCb(const geometry_msgs::Twist& vel)
   lin_vel=vel.linear.x*1000;
   ang_vel=vel.angular.z*180/pi;
 }
-
 ros::Subscriber<geometry_msgs::Twist> sub("/turtle1/cmd_vel", messageCb );
 /*----------------------Publisher define------------------------------------------------*/
 geometry_msgs::Pose2D postef;
@@ -225,10 +224,12 @@ ISR(TIMER1_OVF_vect)
   calculate_position(p_now[0],p_now[1],p_now[2]);
   l_error= l_set-abs(l_p);
   r_error= r_set-abs(r_p);
-  if (l_error>=-1 && l_error<=1) l_error=0;
-  if (r_error>=-1 && r_error<=1) r_error=0;
   l_out += PID_cal(l_error,l_pre_error,l_integral,l_derivative,l_Ppart,l_Ipart,l_Dpart,l_kP,l_kI,l_kD);
   r_out += PID_cal(r_error,r_pre_error,r_integral,r_derivative,r_Ppart,r_Ipart,r_Dpart,r_kP,r_kI,r_kD);
+
+  if (l_set==0) {l_out=0; l_dir=c_clkw;}
+  if (r_set==0) {r_out=0; r_dir=c_clkw;}
+  
   if (l_out>= 255) l_out = 255;
   if (r_out>= 255) r_out = 255;
   pwmOut(l_out,r_out,l_dir,r_dir);
