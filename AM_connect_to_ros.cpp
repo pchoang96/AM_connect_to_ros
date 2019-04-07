@@ -8,6 +8,7 @@
 
 #define clkw        0
 #define c_clkw      1
+
 #define encodPinA1  3
 #define M1_p        6
 #define M1_l        7
@@ -33,9 +34,11 @@ double r_v,r_vt; // pwm: pwm output. lv: mm/sec. lvt: tic/delta_t l:lert, r: rig
 bool l_dir=clkw, r_dir=clkw;
 /**-----------------------pid velocity calculation-------------------------------------------**/
 volatile double  l_error=0.0,l_pre_error=0.0,l_integral=0.0,l_derivative=0.0,l_Ppart=0.0,l_Ipart=0.0,l_Dpart=0.0,l_out,l_set,l_ms,l_pre_out=0;
-double const l_kP = 0.72, l_kI=25.205 ,l_kD = 0.005;
+//double const l_kP = 0.72, l_kI=25.205 ,l_kD = 0.005;
+double const l_kP = 0.95, l_kI=25.23 ,l_kD = 0.008;
 volatile double  r_error=0.0,r_pre_error=0.0,r_integral=0.0,r_derivative=0.0,r_Ppart=0.0,r_Ipart=0.0,r_Dpart=0.0,r_out,r_set,r_ms,r_pre_out=0;
 double const r_kP = 0.95, r_kI=25.23,r_kD = 0.008;
+//double const r_kP = 0.72, r_kI=25.205,r_kD = 0.005;
 /**--------------------------car parameter-----------------------------------------------**/
 const double pi=3.1415;
 const double sampletime = 0.02, inv_sampletime = 1/sampletime,timer_set=65535-sampletime*250000;
@@ -46,7 +49,8 @@ const bool l_motor=1,r_motor=0;
 double p_org[]={0.0,0.0,0.0}, p_now[]= {0.0,0.0,0.0}; //{x,y,phi}
 int l_p=0,r_p=0;
 double l_d=0,r_d=0;
-//time period for position calulate
+
+//time period for connecting
 int pos_sampleTime=50;
 long int setting_millis=millis()+pos_sampleTime;
 ros::NodeHandle  nh;
@@ -54,8 +58,9 @@ ros::NodeHandle  nh;
 void messageCb(const geometry_msgs::Twist& vel)
 {
   lin_vel=vel.linear.x*1000;
-  ang_vel=vel.angular.z*180/pi;
+  ang_vel=vel.angular.z;//*180/pi;
 }
+
 ros::Subscriber<geometry_msgs::Twist> sub("/turtle1/cmd_vel", messageCb );
 /*----------------------Publisher define------------------------------------------------*/
 geometry_msgs::Pose2D postef;
@@ -74,8 +79,9 @@ ros::Publisher test_temp("velocity", &lin_ang);
 
 void setup()
 {
+  //nh.getHardware()->setBaud(57600);
   nh.getHardware()->setBaud(250000);
- // rosrun rosserial_python serial_node.py _port:=/dev/ttyUSB0 _baud:=1000000
+ // rosrun rosserial_python serial_node.py _port:=/dev/ttyUSB0 _baud:=250000
 
   nh.initNode();
   nh.subscribe(sub);
@@ -135,13 +141,13 @@ void pwmOut(int Lpwm, int Rpwm, bool Ldir, bool Rdir)
     analogWrite(M1_p,0); digitalWrite(M1_l,0);
     analogWrite(M2_p,0); digitalWrite(M2_l,0);
   }
-  else if(Ldir==clkw && Rdir==clkw)
+  else if(Ldir==c_clkw && Rdir==c_clkw)
   {
     analogWrite(M1_p,0-Rpwm); digitalWrite(M1_l,1);
     analogWrite(M2_p,0-Lpwm); digitalWrite(M2_l,1);
   }
 
-  else if(Ldir==c_clkw && Rdir==c_clkw)
+  else if(Ldir==clkw && Rdir==clkw)
   {
     analogWrite(M1_p,Rpwm); digitalWrite(M1_l,0);
     analogWrite(M2_p,Lpwm); digitalWrite(M2_l,0) ;  
@@ -168,8 +174,9 @@ void calculate_position(double xt,double yt, double pht)
 
   xt += c_d*cos(pht);
   yt += c_d*sin(pht);
-  pht += atan2((r_d-l_d),wheels_distance);
-
+  pht += (atan2((r_d-l_d),wheels_distance))*180/pi;
+  while (pht<0) {pht = 360-pht;}
+  while (pht>=360) {pht = pht-360;}
   //update position
   p_now[0]=xt;
   p_now[1]=yt;
@@ -183,7 +190,7 @@ void motion(double lin, double phi )
   //to l_vt and r_vt
   l_vt = l_v*(wheels_encoder/(pi*wheels_diameter))*sampletime;
   r_vt = r_v*(wheels_encoder/(pi*wheels_diameter))*sampletime;
-
+  
   if (l_vt>=0) l_dir = clkw;//go ahead
   else l_dir =c_clkw;       //backhead
   if (r_vt>=0) r_dir = clkw;
