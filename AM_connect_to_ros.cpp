@@ -28,7 +28,7 @@
 
 
 /**--------------------Control signal variable-----------------------------------------------------------------------------------**/
-volatile int ang_vel=0,lin_vel=0;
+volatile double ang_vel=0,lin_vel=0;
 double l_v,l_vt;
 double r_v,r_vt; // pwm: pwm output. lv: mm/sec. lvt: tic/delta_t l:lert, r: right 
 bool l_dir=clkw, r_dir=clkw;
@@ -61,7 +61,15 @@ void messageCb(const geometry_msgs::Twist& vel)
   ang_vel=vel.angular.z;//*180/pi;
 }
 
-ros::Subscriber<geometry_msgs::Twist> sub("/turtle1/cmd_vel", messageCb );
+ros::Subscriber<geometry_msgs::Twist> sub("/cmd_vel", messageCb );
+
+void messageCb2(const geometry_msgs::Twist& velo)
+{
+  lin_vel=velo.linear.x*1000;
+  ang_vel=velo.angular.z;//*180/pi;
+}
+
+ros::Subscriber<geometry_msgs::Twist> suby("/turtle1/cmd_vel", messageCb2 );
 /*----------------------Publisher define------------------------------------------------*/
 geometry_msgs::Pose2D postef;
 ros::Publisher pos_temp("position", &postef);
@@ -80,11 +88,12 @@ ros::Publisher test_temp("velocity", &lin_ang);
 void setup()
 {
   //nh.getHardware()->setBaud(57600);
-  nh.getHardware()->setBaud(250000);
+  nh.getHardware()->setBaud(115200);
  // rosrun rosserial_python serial_node.py _port:=/dev/ttyUSB0 _baud:=250000
 
   nh.initNode();
   nh.subscribe(sub);
+  nh.subscribe(suby);
   nh.advertise(pos_temp);
   nh.advertise(test_temp);
   pinMode(M1_l,OUTPUT);
@@ -119,7 +128,7 @@ void loop()
       setting_millis=millis() + pos_sampleTime;
     }
   nh.spinOnce();
-  delay(pos_sampleTime/2);
+  delay(1);
 }
 /*-------------------encoder interrupt 1 ---------------------------------------*/
 void encoder_1()
@@ -153,13 +162,13 @@ void pwmOut(int Lpwm, int Rpwm, bool Ldir, bool Rdir)
     analogWrite(M2_p,Lpwm); digitalWrite(M2_l,0) ;  
   }
 
-  else if(Ldir==c_clkw && Rdir==clkw)
+  else if(Ldir==clkw && Rdir==c_clkw)
   {
     analogWrite(M1_p,0-Rpwm); digitalWrite(M1_l,1);
     analogWrite(M2_p,Lpwm); digitalWrite(M2_l,0);  
   }
 
-  else if(Ldir==clkw && Rdir==c_clkw)
+  else if(Ldir==c_clkw && Rdir==clkw)
   {
     analogWrite(M1_p,Rpwm); digitalWrite(M1_l,0);
     analogWrite(M2_p,0-Lpwm); digitalWrite(M2_l,1);
@@ -198,10 +207,10 @@ void motion(double lin, double phi )
   
   l_set=abs(l_vt);
   r_set=abs(r_vt);
- /* if (l_set>30) l_set=30;
-  else if (l_set<5 && l_set>0.5) l_set=5 ;
-  if (r_set>30) r_set=30;
-  else if (r_set<5 && r_set>0.5) r_set =5;*/
+ // if (l_set>30) l_set=30;
+  if (l_set<5 && l_set>0.5) l_set=5 ;
+  //if (r_set>30) r_set=30;
+  if (r_set<5 && r_set>0.5) r_set =5;
 }
 /**---------------------------------------------------------------------------------------------------------------**/
 //PID_cal(l_error,l_pre_error,l_integral,l_derivative,l_Ppart,l_Ipart,l_Dpart,l_kP,l_kI,l_kD);
