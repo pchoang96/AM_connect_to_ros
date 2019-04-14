@@ -35,16 +35,15 @@ bool l_dir=clkw, r_dir=clkw;
 /**-----------------------pid velocity calculation-------------------------------------------**/
 volatile double  l_error=0.0,l_pre_error=0.0,l_integral=0.0,l_derivative=0.0,l_Ppart=0.0,l_Ipart=0.0,l_Dpart=0.0,l_out,l_set,l_ms,l_pre_out=0;
 //double const l_kP = 0.72, l_kI=25.205 ,l_kD = 0.005;
-double const l_kP = 0.95, l_kI=25.23 ,l_kD = 0.008;
+double l_kP = 0.81, l_kI=20.06,l_kD = 0.01;
 volatile double  r_error=0.0,r_pre_error=0.0,r_integral=0.0,r_derivative=0.0,r_Ppart=0.0,r_Ipart=0.0,r_Dpart=0.0,r_out,r_set,r_ms,r_pre_out=0;
-double const r_kP = 0.95, r_kI=25.23,r_kD = 0.008;
+double r_kP = 0.81, r_kI=20.06,r_kD = 0.01;
 //double const r_kP = 0.72, r_kI=25.205,r_kD = 0.005;
 /**--------------------------car parameter-----------------------------------------------**/
 const double pi=3.1415;
 const double sampletime = 0.02, inv_sampletime = 1/sampletime,timer_set=65535-sampletime*250000;
-const double wheels_distance = 207, wheels_radius = 31, wheels_diameter=62,wheels_encoder = 430;// mm
+const double wheels_distance = 207, wheels_radius = 31, wheels_diameter=62,wheels_encoder = 440 ;// mm
 const double wheel_ticLength = wheels_diameter*pi/wheels_encoder;
-const bool l_motor=1,r_motor=0;
 /*--------------------------position calculation----------------------------*/
 double p_org[]={0.0,0.0,0.0}, p_now[]= {0.0,0.0,0.0}; //{x,y,phi}
 int l_p=0,r_p=0;
@@ -87,7 +86,6 @@ ros::Publisher test_temp("velocity", &lin_ang);
 
 void setup()
 {
-  //nh.getHardware()->setBaud(57600);
   nh.getHardware()->setBaud(115200);
  // rosrun rosserial_python serial_node.py _port:=/dev/ttyUSB0 _baud:=250000
 
@@ -121,8 +119,8 @@ void loop()
       postef.theta = p_now[2];
       pos_temp.publish(&postef);
       
-      lin_ang.x = r_v;
-      lin_ang.y = l_v;
+      lin_ang.x = r_d*inv_sampletime/1000;
+      lin_ang.y = l_d*inv_sampletime/1000;
       test_temp.publish(&lin_ang);
        
       setting_millis=millis() + pos_sampleTime;
@@ -181,11 +179,11 @@ void calculate_position(double xt,double yt, double pht)
   r_d = r_p*wheel_ticLength;
   double c_d = (l_d + r_d )/2;
 
-  xt += c_d*cos(pht);
-  yt += c_d*sin(pht);
+  xt += c_d*cos(pht/180*pi);
+  yt += c_d*sin(pht/180*pi);
   pht += (atan2((r_d-l_d),wheels_distance))*180/pi;
-  while (pht<0) {pht = 360-pht;}
-  while (pht>=360) {pht = pht-360;}
+ // while (pht<0) {pht = 360-abs(pht);}
+ // while (pht>=360) {pht = pht-360;}
   //update position
   p_now[0]=xt;
   p_now[1]=yt;
@@ -208,9 +206,9 @@ void motion(double lin, double phi )
   l_set=abs(l_vt);
   r_set=abs(r_vt);
  // if (l_set>30) l_set=30;
-  if (l_set<5 && l_set>0.5) l_set=5 ;
+  //if (l_set<5 && l_set>0.5) l_set=5 ;
   //if (r_set>30) r_set=30;
-  if (r_set<5 && r_set>0.5) r_set =5;
+  //if (r_set<5 && r_set>0.5) r_set =5;
 }
 /**---------------------------------------------------------------------------------------------------------------**/
 //PID_cal(l_error,l_pre_error,l_integral,l_derivative,l_Ppart,l_Ipart,l_Dpart,l_kP,l_kI,l_kD);
