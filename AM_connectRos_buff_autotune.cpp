@@ -17,6 +17,11 @@
 #define M2_l        4
 #define DEBUG       1
 
+/*-----how to turn your dragon---------*/
+#define basicZN     0
+#define pessenIR    1
+#define lessOS      2
+#define noOS        3
 /**----------------pid position calculator------------------------------------------**/
 /* 
  * pid for motor:
@@ -100,8 +105,9 @@ ros::Publisher test_temp("velocity", &lin_ang);
 
 void setup()
 {
-  nh.getHardware()->setBaud(1000000);
+  nh.getHardware()->setBaud(115200);
  // rosrun rosserial_python serial_node.py _port:=/dev/ttyUSB0 _baud:=250000
+  Serial.begin(115200);
   nh.initNode();
   nh.subscribe(sub);
   nh.subscribe(suby);
@@ -137,6 +143,7 @@ void loop()
             l_kD = r_kD = kDavg;
         }
     }
+    lin_vel=500;
   if (millis()>=setting_millis)
     {
       postef.x     = p_now[0];
@@ -287,7 +294,7 @@ void tunePID() {
             save1= (t2-t1)/1000000;
             outDis=(topOUT-botOUT)/2;
             reactDis = (react_max -react_min)/2;
-            calTune(save1,reactDis,outDis);
+            calTune(save1,reactDis,outDis,basicZN);
             pwmOut(botOUT,botOUT,c_clkw,clkw);
             //---------------------------------
             pikachu = false;
@@ -304,31 +311,65 @@ void tunePID() {
         //---------------------------------------
     }
 }
-void calTune(double pU, double A, double D){
+void calTune(double pU, double A, double D, int type){
+  double kpko,kiko,kdko;
+  switch(type){
+    case(basicZN): {
+      kpko=0.6;
+      kiko=2.0;
+      kdko=8;
+      break;
+    }
+    case(pessenIR): {
+      kpko=0.7;
+      kiko=2.5;
+      kdko=20/3;
+      break;
+    }
+    case(lessOS): {
+      kpko=0.33;
+      kiko=2;
+      kdko=3;
+      break; 
+    }
+    case(noOS): {
+      kpko=0.2;
+      kiko=2;
+      kdko=3;
+      break;
+    }
+    default: break;
+  }
     // Calculate Ku (ultimate gain)
     // Formula given is Ku = 4d / πa
     // d is the amplitude of the output signal
     // a is the amplitude of the input signal
     double kU= (4*D)/(A*pi);
-    // How gains are calculated
+    /*// How gains are calculated
     // PID control algorithm needs Kp, Ki, and Kd
     // Ziegler-Nichols tuning method gives Kp, Ti, and Td
-    //
-    // Kp = 0.6Ku = Kc
-    // Ti = 0.5Tu = Kc/Ki
-    // Td = 0.125Tu = Kd/Kc
-    //
-    // Solving these equations for Kp, Ki, and Kd gives this:
-    //
     // Kp = 0.6Ku
-    // Ki = 1.2*kU/pU;
-    // Kd = 0.075*kU*pU;
+    // Ki = 2Kp/pU;
+    // Kd = Kp*pU/8;
     
-    kP[sample-1] = 0.6*kU;
-    kI[sample-1] = 2*kP[sample-1]/pU;
-    kD[sample-1] = kP[sample-1]*pU/8;
+    //Pessen Integral Rule[2]
+    // Kp = 0.7*Ku
+    // Ki = 2.5*Kp/pU;
+    // Kd = 0.15*Kp*pU;
+    //SomeOS
+    // Kp = 0.33*Ku
+    // Ki = 2*Kp/pU;
+    // Kd = Kp*pU/3;
+    //NOneOS
+    // Kp = 0.2*Ku
+    // Ki = 2*Kp/pU;
+    // Kd = Kp*pU/3;
+    */
+    kP[sample-1] = kpko*kU;
+    kI[sample-1] = kiko*kP[sample-1]/pU;
+    kD[sample-1] = kP[sample-1]*pU/kdko;
 }
-bool end_() {
+bool end_(){
     for(int i=0;i<=cycle-2;i++){
         kPavg+=kP[i];
         kIavg+=kI[i];
@@ -363,6 +404,7 @@ ISR(TIMER1_OVF_vect) {
     if (r_out>= 255) r_out = 255;
     pwmOut(l_out,r_out,l_dir,r_dir);
   }
+  Serial.println((String) l_p + " "+ l_vt);
   l_p=0;
   r_p=0;
   TCNT1 =timer_set;
